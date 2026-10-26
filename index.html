@@ -1,1 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>NetPulse</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<script>
+  // Dark by default; follows the system unless the visitor picked a theme.
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('theme'); } catch (e) {}
+    if (saved === 'light' || saved === 'dark') document.documentElement.setAttribute('data-theme', saved);
+  })();
+</script>
+<style>
+  /* Layout: one quiet column. Huge two-line name, big statement, four menu cards, a command table, the real main menu, run steps. */
+  :root {
+    color-scheme: dark;
+    --bg: #000000;
+    --surface: #0d0d0f;
+    --text: #ffffff;
+    --muted: #9b9ba5;
+    --line: #232328;
+    --accent: #2563eb;
+    --accent-ink: #60a5fa;
+    --accent-on: #ffffff;
+    --inv-bg: #ffffff;
+    --inv-fg: #000000;
+    --glass: rgba(13, 13, 15, 0.85);
+    --hover-line: rgba(96, 165, 250, 0.45);
+    --shadow: rgba(37, 99, 235, 0.28);
+    --radius: 14px;
+    --ease: cubic-bezier(.2, .7, .2, 1);
+    --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  }
 
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --bg: #f9f9fb;
+      --surface: #ffffff;
+      --text: #000000;
+      --muted: #5c5c66;
+      --line: #e5e5ea;
+      --accent: #2563eb;
+      --accent-ink: #2563eb;
+      --accent-on: #ffffff;
+      --inv-bg: #000000;
+      --inv-fg: #ffffff;
+      --glass: rgba(255, 255, 255, 0.85);
+      --hover-line: rgba(37, 99, 235, 0.35);
+      --shadow: rgba(0, 0, 0, 0.18);
+    }
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f9f9fb;
+    --surface: #ffffff;
+    --text: #000000;
+    --muted: #5c5c66;
+    --line: #e5e5ea;
+    --accent: #2563eb;
+    --accent-ink: #2563eb;
+    --accent-on: #ffffff;
+    --inv-bg: #000000;
+    --inv-fg: #ffffff;
+    --glass: rgba(255, 255, 255, 0.85);
+    --hover-line: rgba(37, 99, 235, 0.35);
+    --shadow: rgba(0, 0, 0, 0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding-left: max(24px, env(safe-area-inset-left, 0px));
+    padding-right: max(24px, env(safe-area-inset-right, 0px));
+  }
+
+  /* Controls: theme + language */
+  .controls {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top, 0px));
+    right: max(16px, env(safe-area-inset-right, 0px));
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+  }
+
+  .lang, .theme {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 64px;
+    padding: 3px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+  }
+
+  .lang:focus-visible, .theme:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 3px;
+  }
+
+  .lang-thumb, .theme-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    background: var(--inv-bg);
+    border-radius: 999px;
+    transition: transform 0.4s var(--ease), background-color 0.45s ease;
+  }
+
+  .theme[aria-checked="true"] .theme-thumb,
+  .lang[data-current="ru"] .lang-thumb { transform: translateX(100%); }
+
+  .lang-opt, .theme-opt {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+    transition: color 0.35s ease;
+  }
+
+  .lang-opt { padding: 7px 0; line-height: 1; }
+  .lang-opt.is-active { color: var(--inv-fg); }
+
+  .theme-opt svg { width: 15px; height: 15px; }
+
+  /* Sun sits left, moon right. The icon under the thumb takes the thumb's contrast color. */
+  .theme[aria-checked="true"] .sun { color: var(--muted); }
+  .theme[aria-checked="true"] .moon { color: var(--inv-fg); }
+  .theme[aria-checked="false"] .sun { color: var(--inv-fg); }
+  .theme[aria-checked="false"] .moon { color: var(--muted); }
+
+  html.theme-anim *, html.theme-anim *::before, html.theme-anim *::after {
+    transition: background-color 0.45s ease, color 0.45s ease, border-color 0.45s ease,
+                box-shadow 0.45s ease, transform 0.4s var(--ease), opacity 0.22s ease !important;
+  }
+
+  [data-i18n], [data-lines], [data-opt] { transition: opacity 0.22s ease; }
+  .is-fading { opacity: 0; }
+
+  /* Hero */
+  .hero {
+    padding: clamp(104px, 17vw, 176px) 0 clamp(56px, 10vw, 96px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero h1 {
+    font-size: clamp(2.6rem, 11.5vw, 7rem);
+    font-weight: 800;
+    letter-spacing: -0.055em;
+    line-height: 1;
+  }
+
+  .hero h1 span { display: block; }
+  .hero h1 .second { color: var(--muted); }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 28px;
+    padding: 7px 16px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+
+  .tag::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+
+  /* Sections */
+  section {
+    padding: clamp(48px, 8vw, 80px) 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  h2 {
+    margin-bottom: 24px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .about { padding: clamp(64px, 11vw, 128px) 0; }
+
+  .about p {
+    font-size: clamp(1.9rem, 6vw, 4.25rem);
+    font-weight: 800;
+    line-height: 1.08;
+    letter-spacing: -0.04em;
+    overflow-wrap: break-word;
+    text-wrap: balance;
+  }
+
+  /* Menu cards */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    padding: 28px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    transition: transform 0.6s var(--ease), box-shadow 0.6s var(--ease), border-color 0.6s ease;
+  }
+
+  .card h3 {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+  }
+
+  .card p { color: var(--muted); font-size: 0.97rem; }
+
+  .card .stack {
+    margin-top: auto;
+    padding-top: 14px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+  }
+
+  .card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 16px;
+    margin-top: 6px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line);
+  }
+
+  .card-meta .count {
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .card-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent-ink);
+    text-decoration: none;
+  }
+
+  .arrow {
+    display: inline-block;
+    transition: transform 0.35s var(--ease), color 0.35s ease;
+  }
+
+  /* Rows: what's inside */
+  .rows { list-style: none; border-top: 1px solid var(--line); }
+
+  .rows li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rows-label { flex: none; font-size: 0.95rem; color: var(--muted); }
+
+  .rows-value {
+    min-width: 0;
+    font-size: clamp(1rem, 3vw, 1.2rem);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    text-align: right;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    transition: color 0.35s ease;
+  }
+
+  /* Command table */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+
+  th, td {
+    padding: 16px 20px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--line);
+  }
+
+  tr:last-child th, tr:last-child td { border-bottom: none; }
+
+  thead th {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  tbody th { font-weight: 500; color: var(--muted); }
+
+  td.cmd {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  /* Main menu + run */
+  .run-text { max-width: 65ch; color: var(--muted); font-size: 0.97rem; }
+  .run-text + .run-text { margin-top: 12px; }
+
+  pre {
+    margin: 0 0 20px;
+    padding: 22px 24px;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  pre .prompt { color: var(--muted); user-select: none; }
+
+  /* CTA */
+  .cta { border-bottom: none; }
+
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    width: 100%;
+    padding: 30px 34px;
+    font-size: clamp(1.2rem, 3.2vw, 1.65rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--accent-on);
+    background: var(--accent);
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: background 0.45s ease, color 0.45s ease;
+  }
+
+  .btn:focus-visible { outline: 2px solid var(--text); outline-offset: 4px; }
+
+  .card-link:focus-visible, .rows-value:focus-visible, .foot-link:focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  footer {
+    padding-bottom: 48px;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  footer .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 16px;
+  }
+
+  .foot-link { color: var(--muted); text-decoration: none; transition: color 0.35s ease; }
+
+  @media (hover: hover) {
+    .lang:hover, .theme:hover { border-color: var(--muted); }
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: var(--hover-line);
+      box-shadow: 0 20px 40px -24px var(--shadow);
+    }
+    .card-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+    .card-link:hover .arrow { transform: translate(2px, -2px); }
+    a.rows-value:hover { color: var(--accent-ink); }
+    a.rows-value:hover .arrow { color: var(--accent-ink); transform: translate(2px, -2px); }
+    .foot-link:hover { color: var(--accent-ink); }
+    .btn:hover { background: var(--inv-bg); color: var(--inv-fg); }
+    .btn:hover .arrow { transform: translateX(8px); }
+  }
+
+  @media (max-width: 720px) {
+    .container {
+      padding-left: max(20px, env(safe-area-inset-left, 0px));
+      padding-right: max(20px, env(safe-area-inset-right, 0px));
+    }
+    .controls { top: calc(12px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); gap: 6px; }
+    .grid { grid-template-columns: 1fr; }
+    .card { padding: 22px; }
+    .rows li { flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px 0; }
+    .rows-value { text-align: left; }
+    th, td { padding: 14px 16px; }
+    pre { padding: 18px; }
+    pre.menu { font-size: 0.78rem; }
+    .btn { padding: 24px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="theme" id="theme-toggle" type="button" role="switch" aria-checked="true" aria-label="Dark theme">
+    <span class="theme-thumb" aria-hidden="true"></span>
+    <span class="theme-opt sun" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </span>
+    <span class="theme-opt moon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </span>
+  </button>
+
+  <button class="lang" id="lang-toggle" type="button" aria-label="Переключить на русский" data-current="en">
+    <span class="lang-thumb" aria-hidden="true"></span>
+    <span class="lang-opt is-active" data-lang="en">EN</span>
+    <span class="lang-opt" data-lang="ru">RU</span>
+  </button>
+</div>
+
+<header class="hero">
+  <div class="container">
+    <h1><span>NetPulse</span><span class="second" data-i18n="hero_second">Network CLI</span></h1>
+    <span class="tag">Python · Linux · CLI</span>
+  </div>
+</header>
+
+<main>
+  <section class="about">
+    <div class="container">
+      <h2 data-i18n="about_title">About</h2>
+      <p data-i18n="about_text">A terminal menu for Linux. Ping a host, list open ports and scan a subnet without remembering the flags.</p>
+    </div>
+  </section>
+
+  <section class="menus">
+    <div class="container">
+      <h2 data-i18n="menus_title">Menus</h2>
+      <div class="grid">
+
+        <article class="card">
+          <h3 data-i18n="net_title">Internet</h3>
+          <p data-i18n="net_text">Pings 8.8.8.8 to check the connection, or any site or IP you type in.</p>
+          <p class="stack">ping -c 3 8.8.8.8 · ping -c 4 host</p>
+          <div class="card-meta">
+            <p class="count" data-opt="1">Main menu · option 1</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3 data-i18n="ports_title">Ports</h3>
+          <p data-i18n="ports_text">Lists the TCP and UDP ports your machine is listening on.</p>
+          <p class="stack">ss -tuln</p>
+          <div class="card-meta">
+            <p class="count" data-opt="2">Main menu · option 2</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3>Nmap</h3>
+          <p data-i18n="nmap_text">Scans a subnet for hosts, open ports, service versions and the operating system.</p>
+          <p class="stack">sudo nmap -sS -sV -O 192.168.1.0/24</p>
+          <div class="card-meta">
+            <p class="count" data-opt="3">Main menu · option 3</p>
+          </div>
+        </article>
+
+        <article class="card">
+          <h3 data-i18n="site_title">Website</h3>
+          <p data-i18n="site_text">Opens the author's website in your default browser.</p>
+          <p class="stack">mraz0tix-code.github.io</p>
+          <div class="card-meta">
+            <p class="count" data-opt="5">Main menu · option 5</p>
+            <a class="card-link" href="https://mraz0tix-code.github.io/" target="_blank" rel="noopener noreferrer">
+              <span data-i18n="site_link">Open website</span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="inside">
+    <div class="container">
+      <h2 data-i18n="inside_title">What is inside</h2>
+      <ul class="rows">
+        <li>
+          <span class="rows-label" data-i18n="tools_label">Tools</span>
+          <span class="rows-value">ping · ss · nmap -sS -sV -O</span>
+        </li>
+        <li>
+          <span class="rows-label" data-i18n="term_label">Terminal</span>
+          <span class="rows-value">kitty --hold</span>
+        </li>
+        <li>
+          <span class="rows-label" data-i18n="row_code">Code</span>
+          <span class="rows-value" data-lines="156" data-short="1">156 lines</span>
+        </li>
+        <li>
+          <span class="rows-label" data-i18n="site_label">Website</span>
+          <a class="rows-value" href="https://mraz0tix-code.github.io/" target="_blank" rel="noopener noreferrer">mraz0tix-code.github.io<span class="arrow" aria-hidden="true"> ↗</span></a>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="commands">
+    <div class="container">
+      <h2 data-i18n="cmd_title">Commands</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" data-i18n="col_action">Action</th>
+              <th scope="col" data-i18n="col_command">Command</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row" data-i18n="act_quick">Quick connection test, 3 packets</th>
+              <td class="cmd">ping -c 3 8.8.8.8</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="act_custom">Ping a site or IP, 4 packets</th>
+              <td class="cmd">ping -c 4 host</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="act_ports">List listening ports</th>
+              <td class="cmd">ss -tuln</td>
+            </tr>
+            <tr>
+              <th scope="row" data-i18n="act_nmap">Scan a subnet, default 192.168.1.0/24</th>
+              <td class="cmd">sudo nmap -sS -sV -O subnet</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="main-menu">
+    <div class="container">
+      <h2 data-i18n="menu_title">Main menu</h2>
+      <pre class="menu"><code>========================================
+               NetPulse
+========================================
+1. Check the internet connection's menu
+2. Check the ports menu
+3. Nmap usage mode (nmap)
+4. Exit NetPulse
+
+5. Open mraz0tix's site
+
+<span class="prompt">Select a menu option (1-4): &gt; </span></code></pre>
+      <p class="run-text" data-i18n="menu_text">Type a number and press Enter. Every command opens in its own kitty window and stays open until you close it.</p>
+    </div>
+  </section>
+
+  <section class="run">
+    <div class="container">
+      <h2 data-i18n="run_title">Run</h2>
+      <pre><code><span class="prompt">$ </span>python NetPulse.py</code></pre>
+      <p class="run-text" data-i18n="run_need">Needs Linux, Python 3 and kitty. Menu items call ping, ss and nmap, so install the ones you use.</p>
+      <p class="run-text" data-i18n="run_warn">The Nmap scan calls sudo. Scan only networks you own or have permission to test.</p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <a class="btn" href="https://github.com/mraz0tix-code" target="_blank" rel="noopener noreferrer">
+        <span data-i18n="cta">Projects on GitHub</span>
+        <span class="arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="container">
+    <span>© mraz0tix</span>
+    <a class="foot-link" href="https://mraz0tix-code.github.io/" target="_blank" rel="noopener noreferrer" data-i18n="foot_back">Portfolio</a>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  var dict = {
+    ru: {
+      hero_second: 'Сетевой CLI',
+      about_title: 'О проекте',
+      about_text: 'Консольное меню для Linux. Пинг хоста, список открытых портов и сканирование подсети без запоминания флагов.',
+      menus_title: 'Меню',
+      net_title: 'Интернет',
+      net_text: 'Пингует 8.8.8.8 для проверки связи или любой сайт и IP, которые вы введёте.',
+      ports_title: 'Порты',
+      ports_text: 'Показывает TCP и UDP порты, которые слушает ваш компьютер.',
+      nmap_text: 'Сканирует подсеть: хосты, открытые порты, версии служб и операционную систему.',
+      site_title: 'Сайт',
+      site_text: 'Открывает сайт автора в браузере по умолчанию.',
+      site_link: 'Открыть сайт',
+      inside_title: 'Что внутри',
+      tools_label: 'Инструменты',
+      term_label: 'Терминал',
+      row_code: 'Код',
+      site_label: 'Сайт',
+      cmd_title: 'Команды',
+      col_action: 'Действие',
+      col_command: 'Команда',
+      act_quick: 'Быстрая проверка связи, 3 пакета',
+      act_custom: 'Пинг сайта или IP, 4 пакета',
+      act_ports: 'Список прослушиваемых портов',
+      act_nmap: 'Сканирование подсети, по умолчанию 192.168.1.0/24',
+      menu_title: 'Главное меню',
+      menu_text: 'Введите номер и нажмите Enter. Каждая команда открывается в отдельном окне kitty и остаётся открытой, пока вы его не закроете.',
+      run_title: 'Запуск',
+      run_need: 'Нужны Linux, Python 3 и kitty. Пункты меню вызывают ping, ss и nmap, поэтому установите те, которыми пользуетесь.',
+      run_warn: 'Сканирование Nmap вызывает sudo. Сканируйте только свои сети или те, на проверку которых есть разрешение.',
+      cta: 'Проекты на GitHub',
+      foot_back: 'Портфолио',
+      theme_label: 'Тёмная тема'
+    },
+    en: {
+      hero_second: 'Network CLI',
+      about_title: 'About',
+      about_text: 'A terminal menu for Linux. Ping a host, list open ports and scan a subnet without remembering the flags.',
+      menus_title: 'Menus',
+      net_title: 'Internet',
+      net_text: 'Pings 8.8.8.8 to check the connection, or any site or IP you type in.',
+      ports_title: 'Ports',
+      ports_text: 'Lists the TCP and UDP ports your machine is listening on.',
+      nmap_text: 'Scans a subnet for hosts, open ports, service versions and the operating system.',
+      site_title: 'Website',
+      site_text: 'Opens the author\'s website in your default browser.',
+      site_link: 'Open website',
+      inside_title: 'What is inside',
+      tools_label: 'Tools',
+      term_label: 'Terminal',
+      row_code: 'Code',
+      site_label: 'Website',
+      cmd_title: 'Commands',
+      col_action: 'Action',
+      col_command: 'Command',
+      act_quick: 'Quick connection test, 3 packets',
+      act_custom: 'Ping a site or IP, 4 packets',
+      act_ports: 'List listening ports',
+      act_nmap: 'Scan a subnet, default 192.168.1.0/24',
+      menu_title: 'Main menu',
+      menu_text: 'Type a number and press Enter. Every command opens in its own kitty window and stays open until you close it.',
+      run_title: 'Run',
+      run_need: 'Needs Linux, Python 3 and kitty. Menu items call ping, ss and nmap, so install the ones you use.',
+      run_warn: 'The Nmap scan calls sudo. Scan only networks you own or have permission to test.',
+      cta: 'Projects on GitHub',
+      foot_back: 'Portfolio',
+      theme_label: 'Dark theme'
+    }
+  };
+
+  var root = document.documentElement;
+  var toggle = document.getElementById('lang-toggle');
+  var options = toggle.querySelectorAll('[data-lang]');
+  var themeBtn = document.getElementById('theme-toggle');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var lightQuery = window.matchMedia('(prefers-color-scheme: light)');
+  var current = 'en';
+  var timer = null;
+  var themeTimer = null;
+
+  function ruLines(n) {
+    var d = n % 10, dd = n % 100;
+    if (d === 1 && dd !== 11) return 'строка';
+    if (d >= 2 && d <= 4 && (dd < 12 || dd > 14)) return 'строки';
+    return 'строк';
+  }
+
+  function renderLines(lang) {
+    document.querySelectorAll('[data-lines]').forEach(function (el) {
+      var n = parseInt(el.getAttribute('data-lines'), 10);
+      var short = el.hasAttribute('data-short');
+      if (lang === 'en') {
+        el.textContent = (short ? '' : 'Project code: ') + n + (n === 1 ? ' line' : ' lines');
+      } else {
+        el.textContent = (short ? '' : 'Код проекта: ') + n + ' ' + ruLines(n);
+      }
+    });
+  }
+
+  function renderOpts(lang) {
+    document.querySelectorAll('[data-opt]').forEach(function (el) {
+      var n = el.getAttribute('data-opt');
+      el.textContent = lang === 'en' ? 'Main menu · option ' + n : 'Главное меню · пункт ' + n;
+    });
+  }
+
+  function render(lang) {
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var text = dict[lang][el.getAttribute('data-i18n')];
+      if (text) el.textContent = text;
+    });
+    renderLines(lang);
+    renderOpts(lang);
+    themeBtn.setAttribute('aria-label', dict[lang].theme_label);
+    root.lang = lang;
+  }
+
+  function markActive(lang) {
+    toggle.setAttribute('data-current', lang);
+    options.forEach(function (o) {
+      o.classList.toggle('is-active', o.getAttribute('data-lang') === lang);
+    });
+    toggle.setAttribute('aria-label', lang === 'ru' ? 'Switch to English' : 'Переключить на русский');
+  }
+
+  function setLang(lang) {
+    if (lang === current) return;
+    current = lang;
+    markActive(lang);
+
+    var nodes = document.querySelectorAll('[data-i18n], [data-lines], [data-opt]');
+    nodes.forEach(function (n) { n.classList.add('is-fading'); });
+
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      render(lang);
+      nodes.forEach(function (n) { n.classList.remove('is-fading'); });
+    }, reduceMotion ? 0 : 230);
+  }
+
+  function isDark() {
+    var t = root.getAttribute('data-theme');
+    if (t === 'dark') return true;
+    if (t === 'light') return false;
+    return !lightQuery.matches;
+  }
+
+  function syncTheme() {
+    themeBtn.setAttribute('aria-checked', isDark() ? 'true' : 'false');
+  }
+
+  function setTheme(theme) {
+    if (!reduceMotion) {
+      root.classList.add('theme-anim');
+      clearTimeout(themeTimer);
+      themeTimer = setTimeout(function () { root.classList.remove('theme-anim'); }, 500);
+    }
+    root.setAttribute('data-theme', theme);
+    syncTheme();
+    try { localStorage.setItem('theme', theme); } catch (e) {}
+  }
+
+  markActive('en');
+  render('en');
+  syncTheme();
+
+  toggle.addEventListener('click', function () {
+    setLang(current === 'ru' ? 'en' : 'ru');
+  });
+
+  themeBtn.addEventListener('click', function () {
+    setTheme(isDark() ? 'light' : 'dark');
+  });
+
+  if (lightQuery.addEventListener) lightQuery.addEventListener('change', syncTheme);
+})();
+</script>
+
+</body>
+</html>
