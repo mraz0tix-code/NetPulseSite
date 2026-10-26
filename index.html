@@ -377,6 +377,8 @@
   /* CTA */
   .cta { border-bottom: none; }
 
+  .btns { display: flex; flex-direction: column; gap: 16px; }
+
   .btn {
     display: flex;
     align-items: center;
@@ -624,10 +626,16 @@
 
   <section class="cta">
     <div class="container">
-      <a class="btn" href="https://github.com/mraz0tix-code" target="_blank" rel="noopener noreferrer">
-        <span data-i18n="cta">Projects on GitHub</span>
-        <span class="arrow" aria-hidden="true">→</span>
-      </a>
+      <div class="btns">
+        <a class="btn" href="https://mraz0tix-code.github.io/SysPulse_FastSysPulse/" target="_blank" rel="noopener noreferrer">
+          <span data-i18n="sys_site_cta">SysPulse &amp; FastSysPulse website</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+        <a class="btn" href="https://github.com/mraz0tix-code" target="_blank" rel="noopener noreferrer">
+          <span data-i18n="cta">Projects on GitHub</span>
+          <span class="arrow" aria-hidden="true">→</span>
+        </a>
+      </div>
     </div>
   </section>
 </main>
@@ -674,6 +682,7 @@
       run_title: 'Запуск',
       run_need: 'Нужны Linux, Python 3 и kitty. Пункты меню вызывают ping, ss и nmap, поэтому установите те, которыми пользуетесь.',
       run_warn: 'Сканирование Nmap вызывает sudo. Сканируйте только свои сети или те, на проверку которых есть разрешение.',
+      sys_site_cta: 'Сайт про SysPulse и FastSysPulse',
       cta: 'Проекты на GitHub',
       foot_back: 'Портфолио',
       theme_label: 'Тёмная тема'
@@ -708,6 +717,7 @@
       run_title: 'Run',
       run_need: 'Needs Linux, Python 3 and kitty. Menu items call ping, ss and nmap, so install the ones you use.',
       run_warn: 'The Nmap scan calls sudo. Scan only networks you own or have permission to test.',
+      sys_site_cta: 'SysPulse & FastSysPulse website',
       cta: 'Projects on GitHub',
       foot_back: 'Portfolio',
       theme_label: 'Dark theme'
